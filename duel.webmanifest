@@ -1,0 +1,17 @@
+{
+  "id": "./",
+  "name": "夜市擂台 2D",
+  "short_name": "夜市擂台",
+  "description": "台灣選戰題材的橫向格鬥遊戲",
+  "lang": "zh-Hant-TW",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "theme_color": "#0a0c13",
+  "background_color": "#0a0c13",
+  "icons": [
+    { "src": "duel-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "duel-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

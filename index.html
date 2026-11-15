@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0a0c13">
+  <link rel="manifest" href="duel.webmanifest">
   <title>夜市擂台 2D</title>
   <style>
     html, body { margin: 0; overflow: hidden; overscroll-behavior: none; background: #0a0c13; }
@@ -17,6 +18,17 @@
       background: #0a0c13; color: #fff2d8; text-align: center; font: 600 1.1rem system-ui, sans-serif;
     }
     [hidden] { display: none; }
+    #web-tools {
+      position: absolute; z-index: 1; top: 6px; right: 9px;
+      display: flex; gap: 7px; align-items: center; color: #fff2d8;
+      font: 600 .86rem system-ui, sans-serif;
+    }
+    #web-tools[hidden] { display: none; }
+    #web-tools button {
+      background: #151c2b; border: 1px solid #d3aa62; border-radius: 6px;
+      color: inherit; font: inherit; padding: .36em .62em; cursor: pointer;
+    }
+    .installed #web-tools { display: none; }
   </style>
   <link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
 <link rel="apple-touch-icon" href="index.apple-touch-icon.png"/>
@@ -27,16 +39,69 @@
     <canvas id="canvas" tabindex="0" aria-label="夜市擂台 2D 遊戲畫面"></canvas>
     <p id="rotate" class="notice" hidden>請將手機轉為橫向</p>
     <p id="status" class="notice" role="status">正在載入夜市擂台…</p>
+    <div id="web-tools" hidden>
+      <span id="web-message" role="status"></span>
+      <button id="install" type="button" hidden>安裝遊戲</button>
+      <button id="fullscreen" type="button" hidden>全螢幕</button>
+    </div>
   </main>
   <script src="index.js"></script>
   <script>
     const canvas = document.querySelector('#canvas');
     const status = document.querySelector('#status');
     const rotate = document.querySelector('#rotate');
+    const toolbar = document.querySelector('#web-tools');
+    const install = document.querySelector('#install');
+    const fullscreen = document.querySelector('#fullscreen');
+    const message = document.querySelector('#web-message');
+    const appWindow = matchMedia('(display-mode: fullscreen), (display-mode: standalone)');
+    document.body.classList.toggle('installed', appWindow.matches || navigator.standalone === true);
     const coarse = matchMedia('(pointer: coarse)');
     const portraitMedia = matchMedia('(orientation: portrait)');
     const viewport = { touch: coarse.matches, portrait: false, interruption: 0 };
+    let controls = true;
+    let ready = false;
+    let installPrompt;
     window.duelViewport = viewport;
+    viewport.setControls = visible => {
+      controls = visible;
+      updateToolbar();
+    };
+
+    function updateToolbar() {
+      toolbar.hidden = !ready || !controls || viewport.portrait;
+    }
+
+    fullscreen.hidden = !document.fullscreenEnabled;
+    fullscreen.addEventListener('click', async () => {
+      try {
+        if (document.fullscreenElement) await document.exitFullscreen();
+        else await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+        message.textContent = '';
+        canvas.focus();
+      } catch {
+        message.textContent = '瀏覽器暫時無法切換全螢幕。';
+      }
+    });
+    document.addEventListener('fullscreenchange', () => {
+      fullscreen.textContent = document.fullscreenElement ? '離開全螢幕' : '全螢幕';
+    });
+    window.addEventListener('beforeinstallprompt', event => {
+      event.preventDefault();
+      installPrompt = event;
+      install.hidden = false;
+    });
+    install.addEventListener('click', async () => {
+      const prompt = installPrompt;
+      if (!prompt) return;
+      installPrompt = undefined;
+      install.hidden = true;
+      try { await prompt.prompt(); } catch { message.textContent = '請從 Chrome 選單安裝遊戲。'; }
+    });
+    window.addEventListener('appinstalled', () => { install.hidden = true; });
+    if ('serviceWorker' in navigator && window.isSecureContext) {
+      navigator.serviceWorker.register('./duel-sw.js').catch(error => console.warn('Duel service worker', error));
+    }
 
     function updateOrientation() {
       const portrait = coarse.matches && portraitMedia.matches;
@@ -45,6 +110,7 @@
       viewport.portrait = portrait;
       rotate.hidden = !portrait;
       canvas.inert = portrait;
+      updateToolbar();
     }
 
     function sizeCanvas() {
@@ -65,8 +131,12 @@
     updateOrientation();
     sizeCanvas();
 
-    const engine = new Engine({ ...{"args":[],"canvasResizePolicy":0,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":18918620,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4}, canvas, canvasResizePolicy: 0 });
-    engine.startGame().then(() => { status.hidden = true; }).catch(error => {
+    const engine = new Engine({ ...{"args":[],"canvasResizePolicy":0,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":21746936,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4}, canvas, canvasResizePolicy: 0 });
+    engine.startGame().then(() => {
+      status.hidden = true;
+      ready = true;
+      updateToolbar();
+    }).catch(error => {
       status.textContent = '遊戲載入失敗，請重新整理。';
       console.error(error);
     });
