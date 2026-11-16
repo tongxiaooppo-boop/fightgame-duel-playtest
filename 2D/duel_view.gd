@@ -15,6 +15,8 @@ const Roster := preload("res://2D/duel_roster.gd")
 const STAGES := [preload("res://2D/assets/night-arena.png"), preload("res://2D/assets/campaign/debate.jpg"),
 	preload("res://2D/assets/campaign/rally.jpg"), preload("res://2D/assets/campaign/park.jpg")]
 const STAGE_NAMES := ["夜市", "辯論會場", "造勢大會", "公園"]
+const ENDING_STAGES := preload("res://2D/assets/campaign/ending-stages.jpg")
+const ENDING_STAGE_COLUMNS := 4
 const PORTRAITS := [
 	preload("res://2D/assets/campaign/liu-super.jpg"), preload("res://2D/assets/campaign/gu-super.jpg"),
 	preload("res://2D/assets/campaign/pei-super.jpg"), preload("res://2D/assets/campaign/shi-super.jpg"),
@@ -1660,28 +1662,34 @@ func _campaign_cleared() -> bool:
 
 func _draw_campaign_ending() -> void:
 	var hero := model.fighters[0].character
+	var ending: Dictionary = Roster.ENDINGS[hero]
 	var accent: Color = CHARACTER_ACCENTS[hero]
-	draw_texture_rect(STAGES[0], Rect2(Vector2.ZERO, SIZE), false, Color("46515c"))
-	draw_rect(Rect2(Vector2.ZERO, SIZE), Color(INK, 0.64))
+	draw_rect(Rect2(Vector2.ZERO, SIZE), INK.lerp(accent, 0.08))
 	var page := Rect2(74, 72, 1132, 500)
 	draw_rect(page, Color("111929"))
-	draw_rect(page, Color(GOLD, 0.66), false, 2.0)
+	draw_rect(page, Color(accent, 0.62), false, 2.0)
 
 	var illustration := Rect2(632, 93, 552, 458)
-	draw_texture_rect_region(PORTRAITS[hero], illustration, Rect2(412, 0, 868, 720))
+	var cell := ENDING_STAGES.get_size() / Vector2(ENDING_STAGE_COLUMNS, 2)
+	var origin := Vector2(hero % ENDING_STAGE_COLUMNS, floori(float(hero) / ENDING_STAGE_COLUMNS)) * cell
+	var crop := Vector2(cell.x - 4.0, (cell.x - 4.0) * illustration.size.y / illustration.size.x)
+	draw_texture_rect_region(ENDING_STAGES, illustration, Rect2(origin + (cell - crop) * 0.5, crop))
+	_draw_sprite(CHARACTER_ATLASES[hero], Pose.IDLE, Vector2(739, 549), 0.64, 1.0, 0.0, Color.WHITE)
+	draw_set_transform(Vector2.ZERO)
 	draw_rect(illustration, Color(accent, 0.88), false, 2.0)
-	draw_rect(Rect2(634, 486, 548, 63), Color(INK, 0.87))
-	_text(Roster.NAMES[hero], Vector2(656, 528), 29, PAPER)
-	_right_text("%d 比 %d" % model.score, Vector2(1160, 528), 24, GOLD)
+	var stage: String = ending["stage"]
+	var stage_width := typeface.get_string_size(stage, HORIZONTAL_ALIGNMENT_LEFT, -1, 24).x + 36.0
+	draw_rect(Rect2(1163 - stage_width, 110, stage_width, 42), Color(INK, 0.91))
+	_right_text(stage, Vector2(1145, 139), 24, PAPER)
 
-	_text("闖關完成    %d / %d" % [ladder_size, ladder_size], Vector2(113, 141), 25, GOLD)
-	_text("夜市重新開張", Vector2(110, 229), 54, PAPER)
-	draw_line(Vector2(114, 265), Vector2(568, 265), Color(GOLD, 0.57), 2.0)
-	_text("洪萬金放下麥克風，宣布收工。", Vector2(113, 315), 25, PAPER)
-	_text("志工搬走最後一排折疊椅，", Vector2(113, 356), 25, PAPER)
-	_text("南街的攤販把招牌一盞盞點亮。", Vector2(113, 397), 25, PAPER)
-	_text("%s回到夜市，只問了一句" % Roster.NAMES[hero], Vector2(113, 456), 25, PAPER)
-	_text("「所以，宵夜要吃什麼？」", Vector2(113, 503), 30, GOLD)
+	_text("%s  ／  闖關完成 %d / %d" % [Roster.NAMES[hero], ladder_size, ladder_size],
+		Vector2(112, 147), 24, accent)
+	_text(ending["title"], Vector2(110, 224), 46, PAPER)
+	draw_line(Vector2(113, 257), Vector2(589, 257), Color(accent, 0.57), 2.0)
+	var lines: Array = ending["lines"]
+	for index in lines.size():
+		_text(lines[index], Vector2(112, 308 + index * 39), 21, PAPER)
+	_text(ending["quote"], Vector2(109, 470), 26, accent)
 	if not touch_mode:
 		_center_text("Enter  再跑一輪     Tab  返回選角", Vector2(640, 700), 18, PAPER)
 

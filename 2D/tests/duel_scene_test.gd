@@ -95,6 +95,7 @@ func _run() -> void:
 	_test_cpu_tempo(Roster.GU)
 	await _test_campaign_scene()
 	await _test_arcade_route()
+	_test_cpu_punish()
 	_test_voice()
 	if capture:
 		await _capture_skills()
@@ -219,6 +220,33 @@ func _test_arcade_route() -> void:
 			_check(not duel.arena._campaign_cleared(), "a regular campaign win advances without the ending")
 		_key(KEY_ENTER)
 	_check(duel.bout == 0 and seen.size() == Roster.LADDER_LENGTH, "clearing the boss offers a fresh run")
+	var stages := {}
+	for hero in Roster.PLAYABLE_COUNT:
+		duel.start_match(hero)
+		duel.bout = duel.ladder.size() - 1
+		duel._begin_bout()
+		duel.battle.match_winner = 0
+		duel._refresh_view()
+		var ending: Dictionary = Roster.ENDINGS[duel.battle.fighters[0].character]
+		stages[ending["stage"]] = true
+		_check(duel.arena._campaign_cleared(), "the final win opens %s's ending" % Roster.NAMES[hero])
+		await _capture("ending-" + CAPTURE_NAMES[hero])
+	_check(stages.size() == Roster.PLAYABLE_COUNT, "each playable character has a distinct ending stage")
+
+
+func _test_cpu_punish() -> void:
+	for level in [0, Roster.LADDER_LENGTH - 1]:
+		duel.start_match(Roster.LIU)
+		duel.bout = level
+		duel._begin_bout()
+		_finish_intro()
+		duel.ai_wait = 10000
+		_set_gap(193.0, false)
+		duel.battle.queue_action(0, &"jab")
+		_step(24)
+		var player_hp: int = duel.battle.fighters[0].hp
+		_check((player_hp < Rules.MAX_HP) == (level > 0),
+			"only the later CPU punishes a whiff while its neutral attack delay is active")
 
 
 func _test_voice() -> void:

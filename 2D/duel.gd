@@ -217,23 +217,24 @@ func _cpu_axis() -> float:
 	var player := battle.fighters[0]
 	var gap := absf(cpu.x - player.x)
 	ai_guard = maxi(0, ai_guard - 1)
-	if bout >= 3 and cpu.move != &"" and cpu.confirmed and cpu.buffer_left == 0 \
-			and cpu.move_tick == cpu.last_contact + 2 and cpu.hitstun == 0:
+	if (bout >= 3 and cpu.move != &"" and cpu.move not in Rules.NORMAL_FINISHERS
+			and cpu.confirmed and cpu.buffer_left == 0
+			and cpu.move_tick == cpu.last_contact + 2 and cpu.hitstun == 0):
 		if cpu.meter == Rules.MAX_METER and gap < 210.0 and bout >= 5:
 			battle.queue_action(1, &"super")
 		elif not Rules.is_skill(cpu.move) and cpu.move != &"super":
-			if bout >= 5 and cpu.cooldowns[0] == 0 and cpu.chain_step >= 1:
+			if (bout >= 5 and cpu.cooldowns[0] == 0 and cpu.chain_step >= 1
+					and gap <= Roster.CPU_FIRST_RANGE[cpu.character]):
 				battle.queue_action(1, &"skill_1")
 			elif cpu.chain_step < 2:
 				battle.queue_action(1, &"normal")
-	# Count the opening only while the CPU is free to act. Every attack leaves a gap after recovery.
-	if ai_guard > 0 or cpu.move != &"" or cpu.hitstun > 0 or cpu.blockstun > 0:
+	if ai_guard > 0 or cpu.move != &"" or cpu.hitstun > 1 or cpu.blockstun > 1:
 		return 0.0
-	if bout >= 2 and player.move != &"" and player.move_tick == 4 and gap < 205.0 and rng.randf() < float(bout) * 0.043:
-		ai_guard = 17
+	if bout >= 2 and cpu.buffer_left == 0 and _cpu_react(cpu, player, gap):
 		return 0.0
+	# Count the neutral delay only while the CPU is free to act.
 	ai_wait = maxi(0, ai_wait - 1)
-	if ai_wait == 0:
+	if ai_wait == 0 and cpu.buffer_left == 0:
 		var action := _cpu_action(cpu, gap)
 		if action != &"":
 			battle.queue_action(1, action)
@@ -241,9 +242,38 @@ func _cpu_axis() -> float:
 		else:
 			ai_wait = rng.randi_range(18, 32)
 	var desired: float = Roster.CPU_DISTANCE[cpu.character]
-	if ai_guard > 0 or gap <= desired:
+	if ai_guard > 0:
 		return 0.0
-	return signf(player.x - cpu.x) * (0.64 + bout * 0.041)
+	var toward := signf(player.x - cpu.x)
+	if bout >= 4 and gap < desired - 16.0 and ai_wait > 6 and cpu.buffer_left == 0:
+		return -toward * (0.53 + bout * 0.06)
+	return toward * minf(1.0, 0.64 + bout * 0.055) if gap > desired else 0.0
+
+
+func _cpu_react(cpu: Rules.Fighter, player: Rules.Fighter, gap: float) -> bool:
+	if player.move == &"" or absf(cpu.height - player.height) >= 90.0:
+		return false
+	var data: Dictionary = Rules.MOVES[player.move]
+	var hits: Array = data["hits"]
+	if hits.is_empty():
+		return false
+	var first_hit: int = hits[0]
+	var last_hit: int = hits[-1]
+	if (cpu.height == 0.0 and player.move_tick == first_hit - 3
+			and gap <= float(data["reach"]) + 8.0 and (cpu.x - player.x) * player.facing > 0.0
+			and rng.randf() < 0.16 + bout * 0.067):
+		ai_guard = last_hit - player.move_tick + 1
+		return true
+	# Punish a missed strike or a blocked strike once its last active tick has passed.
+	var normal := &"jab" if gap <= Rules.PUNCH_START_RANGE else &"kick"
+	var startup: int = Rules.MOVES[normal]["hits"][0]
+	if (bout >= 4 and player.move_tick >= last_hit and not player.confirmed
+			and player.move_tick + startup + 1 < int(data["end"])
+			and gap <= float(Rules.MOVES[normal]["reach"])):
+		battle.queue_action(1, &"normal")
+		ai_wait = rng.randi_range(44 - bout * 4, 67 - bout * 6)
+		return true
+	return false
 
 
 func _cpu_action(cpu: Rules.Fighter, gap: float) -> StringName:

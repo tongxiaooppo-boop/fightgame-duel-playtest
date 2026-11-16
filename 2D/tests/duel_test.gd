@@ -12,6 +12,9 @@ func _initialize() -> void:
 	_test_chain([&"jab", &"kick", &"jab"], [&"jab", &"roundhouse", &"hook"])
 	_test_normal_chain(Rules.PUNCH_START_RANGE, [&"jab", &"cross", &"hook"], 65)
 	_test_normal_chain(Rules.PUNCH_START_RANGE + 1.0, [&"kick", &"roundhouse", &"heel"], 78)
+	_test_corner_pressure(0, &"jab", 65)
+	_test_corner_pressure(1, &"kick", 78)
+	_test_opener_recovery()
 	_test_defense()
 	_test_skill_bindings_and_cooldowns()
 	_test_ribbons_and_afterimage()
@@ -71,6 +74,46 @@ func _test_normal_chain(gap: float, expected: Array, expected_damage: int) -> vo
 	_check(_until_hit(duel, 45).is_empty(), "a fourth buffered normal does not extend the chain")
 	_check(duel.fighters[0].combo_display == 3, "three normal inputs produce three consecutive hits")
 	_check(Rules.MAX_HP - duel.fighters[1].hp == expected_damage, "three normals deal the intended total")
+
+
+func _test_corner_pressure(side: int, opener: StringName, chain_damage: int) -> void:
+	var duel := _duel()
+	var attacker := duel.fighters[side]
+	var defender := duel.fighters[1 - side]
+	defender.x = Rules.RIGHT_EDGE if side == 0 else Rules.LEFT_EDGE
+	attacker.x = defender.x - attacker.facing * Rules.BODY_WIDTH
+	for count in 3:
+		duel.queue_action(side, opener)
+		_until_hit(duel)
+	_check(attacker.combo == 3, "a corner finisher still lands as a three-hit combo")
+	duel.queue_action(side, &"skill_1")
+	for frame in 17:
+		duel.step()
+	_check(attacker.cooldowns[0] == 0, "third normal ends the cancel window")
+	_check(absf(defender.x - attacker.x) > Rules.BODY_WIDTH + 35.0, "the finisher opens space at either wall")
+	for frame in 100:
+		duel.queue_action(side, &"normal")
+		var toward := 1.0 if side == 0 else -1.0
+		duel.step(toward if side == 0 else 0.0, side == 1, toward if side == 1 else 0.0, side == 0)
+	_check(defender.hp == defender.max_hp - chain_damage, "guard breaks sustained corner pressure after three hits")
+
+
+func _test_opener_recovery() -> void:
+	var duel := _duel()
+	var attacker := duel.fighters[0]
+	var defender := duel.fighters[1]
+	defender.x = Rules.RIGHT_EDGE
+	attacker.x = defender.x - Rules.BODY_WIDTH
+	duel.queue_action(0, &"jab")
+	_until_hit(duel)
+	while attacker.move != &"":
+		duel.step(0.0, false, 0.0, true)
+	_check(defender.guarding, "recovery on a single corner jab gives the defender a turn")
+	duel.queue_action(0, &"jab")
+	for frame in 12:
+		duel.step(0.0, false, 0.0, true)
+	_check(defender.hp == defender.max_hp - int(Rules.MOVES[&"jab"]["damage"]),
+		"repeating a fresh jab cannot keep the defender in hitstun")
 
 
 func _test_defense() -> void:

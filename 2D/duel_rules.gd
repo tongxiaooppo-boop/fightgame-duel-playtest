@@ -19,12 +19,13 @@ const SUPER_FINISH_HOLD := 6
 
 # Move data is measured in simulation ticks and pixels at the arena's design size.
 const MOVES := {
-	&"jab": {"hits": [5], "end": 21, "damage": 17, "reach": 151.0, "stun": 23, "step": 24.0},
-	&"cross": {"hits": [6], "end": 23, "damage": 21, "reach": 164.0, "stun": 24, "step": 31.0},
-	&"hook": {"hits": [7], "end": 29, "damage": 27, "reach": 184.0, "stun": 25, "step": 37.0},
-	&"kick": {"hits": [8], "end": 27, "damage": 21, "reach": 195.0, "stun": 25, "step": 29.0},
-	&"roundhouse": {"hits": [7], "end": 29, "damage": 25, "reach": 209.0, "stun": 26, "step": 38.0},
-	&"heel": {"hits": [9], "end": 33, "damage": 32, "reach": 217.0, "stun": 28, "step": 45.0},
+	# Let the defender act before a fresh opener. Hit-confirmed cancels still link.
+	&"jab": {"hits": [5], "end": 28, "damage": 17, "reach": 151.0, "stun": 23, "step": 24.0},
+	&"cross": {"hits": [6], "end": 30, "damage": 21, "reach": 164.0, "stun": 24, "step": 31.0},
+	&"hook": {"hits": [7], "end": 29, "damage": 27, "reach": 184.0, "stun": 12, "step": 37.0, "push": 11.0},
+	&"kick": {"hits": [8], "end": 33, "damage": 21, "reach": 195.0, "stun": 25, "step": 29.0},
+	&"roundhouse": {"hits": [7], "end": 33, "damage": 25, "reach": 209.0, "stun": 26, "step": 38.0},
+	&"heel": {"hits": [9], "end": 33, "damage": 32, "reach": 217.0, "stun": 14, "step": 45.0, "push": 12.0},
 	&"lane_step": {"hits": [8], "end": 30, "damage": 135, "reach": 183.0, "stun": 27, "step": 24.0},
 	&"ribbon_split": {"hits": [], "casts": [9, 15], "end": 37},
 	&"paper_flock": {"hits": [], "casts": [4], "end": 37},
@@ -56,6 +57,7 @@ const MOVES := {
 }
 const PUNCH_CHAIN := [&"jab", &"cross", &"hook"]
 const KICK_CHAIN := [&"kick", &"roundhouse", &"heel"]
+const NORMAL_FINISHERS := [&"hook", &"heel"]
 const SKILL_ACTIONS := [&"skill_1", &"skill_2", &"skill_3"]
 const EFFECTS := {
 	&"ribbon_low": {"delay": 3, "duration": 33, "speed": 15.0, "height": 45.0, "half_height": 42.0, "reach": 32.0, "damage": 61, "stun": 20, "lift": 0.0},
@@ -299,11 +301,10 @@ func _try_start(fighter: Fighter, other: Fighter, side: int) -> void:
 	var slot := SKILL_ACTIONS.find(action)
 	var chained := fighter.move != &""
 	if chained:
-		if not fighter.confirmed or fighter.move_tick < fighter.last_contact + 2 or fighter.move == &"super":
+		if (not fighter.confirmed or fighter.move_tick < fighter.last_contact + 2
+				or fighter.move == &"super" or fighter.move in NORMAL_FINISHERS):
 			return
 		if is_skill(fighter.move) and action != &"super":
-			return
-		if fighter.chain_step >= 2 and action in [&"normal", &"jab", &"kick"]:
 			return
 	if action == &"normal":
 		if chained:
@@ -529,9 +530,14 @@ func _resolve_contact(side: int) -> void:
 	var cinematic := move == &"super"
 	var push := float(data.get("push", 2.0)) if attacker.move_tick == data["hits"][-1] else 2.0
 	_damage(side, int(data["damage"]), int(data["stun"]), move, attacker.facing, cinematic, false, push)
+	if move in NORMAL_FINISHERS:
+		# At the wall, send the attacker back too so the finisher still opens space.
+		var wall := RIGHT_EDGE if attacker.facing > 0.0 else LEFT_EDGE
+		var wall_room := absf(wall - defender.x)
+		attacker.push -= attacker.facing * 9.0 * (1.0 - clampf(wall_room / 80.0, 0.0, 1.0))
 	if attacker.confirmed and data.has("lift"):
 		defender.velocity_y = maxf(defender.velocity_y, float(data["lift"]))
-	hitstop = maxi(hitstop, 6 if move in [&"hook", &"heel"] or is_skill(move) else 4)
+	hitstop = maxi(hitstop, 6 if move in NORMAL_FINISHERS or is_skill(move) else 4)
 	if cinematic:
 		super_side = side
 		super_tick = 0
