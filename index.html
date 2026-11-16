@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0a0c13">
   <link rel="manifest" href="duel.webmanifest">
-  <title>夜市擂台 2D</title>
+  <link rel="icon" href="duel-192.png?v=s1">
+  <link rel="apple-touch-icon" href="duel-192.png?v=s1">
+  <title>選戰風雲S</title>
   <style>
     html, body { margin: 0; overflow: hidden; overscroll-behavior: none; background: #0a0c13; }
     #frame {
@@ -36,9 +38,9 @@
 </head>
 <body>
   <main id="frame">
-    <canvas id="canvas" tabindex="0" aria-label="夜市擂台 2D 遊戲畫面"></canvas>
+    <canvas id="canvas" tabindex="0" aria-label="選戰風雲S 遊戲畫面"></canvas>
     <p id="rotate" class="notice" hidden>請將手機轉為橫向</p>
-    <p id="status" class="notice" role="status">正在載入夜市擂台…</p>
+    <p id="status" class="notice" role="status">正在載入選戰風雲S…</p>
     <div id="web-tools" hidden>
       <span id="web-message" role="status"></span>
       <button id="install" type="button" hidden>安裝遊戲</button>
@@ -131,7 +133,7 @@
     updateOrientation();
     sizeCanvas();
 
-    const engine = new Engine({ ...{"args":[],"canvasResizePolicy":0,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":21390296,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4}, canvas, canvasResizePolicy: 0 });
+    const engine = new Engine({ ...{"args":[],"canvasResizePolicy":0,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":21415620,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4}, canvas, canvasResizePolicy: 0 });
     engine.startGame().then(() => {
       status.hidden = true;
       ready = true;

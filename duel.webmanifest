@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "夜市擂台 2D",
-  "short_name": "夜市擂台",
+  "name": "選戰風雲S",
+  "short_name": "選戰風雲S",
   "description": "台灣選戰題材的橫向格鬥遊戲",
   "lang": "zh-Hant-TW",
   "start_url": "./",
@@ -11,7 +11,7 @@
   "theme_color": "#0a0c13",
   "background_color": "#0a0c13",
   "icons": [
-    { "src": "duel-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "duel-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+    { "src": "duel-192.png?v=s1", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "duel-512.png?v=s1", "sizes": "512x512", "type": "image/png", "purpose": "any" }
   ]
 }
